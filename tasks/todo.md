@@ -1,3 +1,5 @@
+> 以下為 fork 前上游 doggy8088/TokenUsageInsights 的歷史工作紀錄，保留原貌供參考；其中的帳號、repo、CI 與 Release 連結皆指向上游，不代表本 fork 的設定。
+
 # 2026-07-10 windows_native_support
 
 ## Goal and acceptance criteria
