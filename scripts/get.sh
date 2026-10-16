@@ -1,23 +1,24 @@
 #!/usr/bin/env bash
-# One-line bootstrap installer for Token 戰情室 (Linux / macOS).
+# One-line bootstrap installer for joker_TokenUsageInsights (Linux / macOS).
 #
 # Downloads the correct prebuilt release archive from GitHub Releases (no
 # Rust/Cargo toolchain required), extracts it, and runs the packaged
 # install.sh. Safe to re-run to upgrade to a newer release.
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/doggy8088/TokenUsageInsights/improve/scripts/get.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/jokersosmart/joker_TokenUsageInsights/improve/scripts/get.sh | bash
 #   curl -fsSL .../get.sh | bash -s -- --service
 #
 # Environment:
-#   TOKEN_USAGE_INSIGHTS_VERSION       Release tag to install. Default: latest
-#   TOKEN_USAGE_INSIGHTS_INSTALL_DIR   Forwarded to install.sh
-#   TOKEN_USAGE_INSIGHTS_BIN_DIR       Forwarded to install.sh
+#   JOKER_TOKEN_USAGE_INSIGHTS_VERSION       Release tag to install. Default: latest
+#   JOKER_TOKEN_USAGE_INSIGHTS_INSTALL_DIR   Forwarded to install.sh
+#   JOKER_TOKEN_USAGE_INSIGHTS_BIN_DIR       Forwarded to install.sh
+#   (The pre-rebrand TOKEN_USAGE_INSIGHTS_* names are still accepted.)
 set -euo pipefail
 
-repo="doggy8088/TokenUsageInsights"
-app_name="token-usage-insights"
-version="${TOKEN_USAGE_INSIGHTS_VERSION:-latest}"
+repo="jokersosmart/joker_TokenUsageInsights"
+app_name="joker-token-usage-insights"
+version="${JOKER_TOKEN_USAGE_INSIGHTS_VERSION:-${TOKEN_USAGE_INSIGHTS_VERSION:-latest}}"
 
 os="$(uname -s)"
 arch="$(uname -m)"

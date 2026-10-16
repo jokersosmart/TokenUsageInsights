@@ -1,15 +1,15 @@
 [CmdletBinding(SupportsShouldProcess = $true)]
 param(
     [string]$InstallDir = $(
-        if ($env:LOCALAPPDATA) { Join-Path $env:LOCALAPPDATA "TokenUsageInsights" }
-        else { Join-Path $HOME "AppData\Local\TokenUsageInsights" }
+        if ($env:LOCALAPPDATA) { Join-Path $env:LOCALAPPDATA "joker_TokenUsageInsights" }
+        else { Join-Path $HOME "AppData\Local\joker_TokenUsageInsights" }
     ),
     [string]$BinDir = $(Join-Path $HOME "bin"),
     [int]$Port = 3003
 )
 
 $ErrorActionPreference = "Stop"
-$AppName = "token-usage-insights"
+$AppName = "joker-token-usage-insights"
 $InstallDir = [IO.Path]::GetFullPath([Environment]::ExpandEnvironmentVariables($InstallDir))
 $BinDir = [IO.Path]::GetFullPath([Environment]::ExpandEnvironmentVariables($BinDir))
 
@@ -22,7 +22,7 @@ if (Test-Path (Join-Path $ScriptDir "$AppName.exe")) {
 
 $BinarySrc = Join-Path $ReleaseDir "$AppName.exe"
 if (!(Test-Path $BinarySrc)) {
-    throw "Missing executable: $BinarySrc. Run this installer from an extracted Token 戰情室 release package."
+    throw "Missing executable: $BinarySrc. Run this installer from an extracted joker_TokenUsageInsights release package."
 }
 
 foreach ($RequiredItem in @("static", "pricing.csv")) {
@@ -31,7 +31,7 @@ foreach ($RequiredItem in @("static", "pricing.csv")) {
     }
 }
 
-if ($PSCmdlet.ShouldProcess($InstallDir, "Install Token Usage Insights")) {
+if ($PSCmdlet.ShouldProcess($InstallDir, "Install joker_TokenUsageInsights")) {
     New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
     New-Item -ItemType Directory -Force -Path $BinDir | Out-Null
 
@@ -69,7 +69,7 @@ exit /b %APP_EXIT_CODE%
 "@ | Set-Content -Encoding ASCII $Shim
 }
 
-Write-Host "Token 戰情室 installed."
+Write-Host "joker_TokenUsageInsights installed."
 Write-Host ""
 Write-Host "Install directory:"
 Write-Host "  $InstallDir"

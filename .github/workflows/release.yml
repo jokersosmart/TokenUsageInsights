@@ -21,19 +21,19 @@ jobs:
         include:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            executable: token-usage-insights
+            executable: joker-token-usage-insights
             archive_ext: tar.gz
           - os: macos-15-intel
             target: x86_64-apple-darwin
-            executable: token-usage-insights
+            executable: joker-token-usage-insights
             archive_ext: tar.gz
           - os: macos-14
             target: aarch64-apple-darwin
-            executable: token-usage-insights
+            executable: joker-token-usage-insights
             archive_ext: tar.gz
           - os: windows-latest
             target: x86_64-pc-windows-msvc
-            executable: token-usage-insights.exe
+            executable: joker-token-usage-insights.exe
             archive_ext: zip
 
     steps:
@@ -81,7 +81,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          package="token-usage-insights-${GITHUB_REF_NAME}-${{ matrix.target }}"
+          package="joker-token-usage-insights-${GITHUB_REF_NAME}-${{ matrix.target }}"
           stage="dist/${package}"
           binary="target/${{ matrix.target }}/release/${{ matrix.executable }}"
 
@@ -119,7 +119,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          package="token-usage-insights-${GITHUB_REF_NAME}-${{ matrix.target }}"
+          package="joker-token-usage-insights-${GITHUB_REF_NAME}-${{ matrix.target }}"
           stage="dist/${package}"
 
           test_root="$(mktemp -d)"
@@ -136,17 +136,17 @@ jobs:
           }
           trap cleanup EXIT
 
-          TOKEN_USAGE_INSIGHTS_INSTALL_DIR="$install_dir" \
-          TOKEN_USAGE_INSIGHTS_BIN_DIR="$bin_dir" \
+          JOKER_TOKEN_USAGE_INSIGHTS_INSTALL_DIR="$install_dir" \
+          JOKER_TOKEN_USAGE_INSIGHTS_BIN_DIR="$bin_dir" \
           PORT=39103 \
             "${stage}/install.sh"
 
-          if [[ ! -x "${bin_dir}/token-usage-insights" ]]; then
-            echo "install.sh did not create the executable symlink at ${bin_dir}/token-usage-insights" >&2
+          if [[ ! -x "${bin_dir}/joker-token-usage-insights" ]]; then
+            echo "install.sh did not create the executable symlink at ${bin_dir}/joker-token-usage-insights" >&2
             exit 1
           fi
 
-          PORT=39103 INSIGHTS_DIR="$insights_dir" "${bin_dir}/token-usage-insights" &
+          PORT=39103 INSIGHTS_DIR="$insights_dir" "${bin_dir}/joker-token-usage-insights" &
           server_pid=$!
 
           response=""
@@ -178,7 +178,7 @@ jobs:
         shell: powershell
         run: |
           $ErrorActionPreference = 'Stop'
-          $package = "token-usage-insights-${env:GITHUB_REF_NAME}-${{ matrix.target }}"
+          $package = "joker-token-usage-insights-${env:GITHUB_REF_NAME}-${{ matrix.target }}"
           $stage = Join-Path $PWD "dist\$package"
           $testRoot = Join-Path $env:RUNNER_TEMP "Token Usage Insights 測試"
           $installDir = Join-Path $testRoot "App Files"
@@ -188,7 +188,7 @@ jobs:
 
           try {
             & (Join-Path $stage 'install.ps1') -InstallDir $installDir -BinDir $binDir -Port 39103
-            $process = Start-Process -FilePath (Join-Path $installDir 'token-usage-insights.exe') -WorkingDirectory $env:RUNNER_TEMP -WindowStyle Hidden -PassThru
+            $process = Start-Process -FilePath (Join-Path $installDir 'joker-token-usage-insights.exe') -WorkingDirectory $env:RUNNER_TEMP -WindowStyle Hidden -PassThru
             try {
               $response = $null
               foreach ($attempt in 1..30) {
@@ -255,7 +255,7 @@ jobs:
           set -euo pipefail
           tag="${GITHUB_REF_NAME}"
           cat > release-notes.md <<EOF
-          ## Token 戰情室 ${tag}
+          ## joker_TokenUsageInsights ${tag}
 
           此 Release 由 GitHub Actions 在 tag 建立時自動產生。
 
@@ -275,8 +275,8 @@ jobs:
           Linux 或 macOS：
 
           \`\`\`bash
-          tar -xzf token-usage-insights-${tag}-<target>.tar.gz
-          cd token-usage-insights-${tag}-<target>
+          tar -xzf joker-token-usage-insights-${tag}-<target>.tar.gz
+          cd joker-token-usage-insights-${tag}-<target>
           ./install.sh
           \`\`\`
 
@@ -289,8 +289,8 @@ jobs:
           Windows：
 
           \`\`\`powershell
-          Expand-Archive token-usage-insights-${tag}-x86_64-pc-windows-msvc.zip
-          cd token-usage-insights-${tag}-x86_64-pc-windows-msvc
+          Expand-Archive joker-token-usage-insights-${tag}-x86_64-pc-windows-msvc.zip
+          cd joker-token-usage-insights-${tag}-x86_64-pc-windows-msvc
           powershell -ExecutionPolicy Bypass -File .\\install.ps1
           \`\`\`
 
@@ -319,7 +319,7 @@ jobs:
           else
             gh release create "$tag" "${files[@]}" \
               --repo "$repo" \
-              --title "Token 戰情室 ${tag}" \
+              --title "joker_TokenUsageInsights ${tag}" \
               --notes-file release-notes.md \
               --verify-tag
           fi
