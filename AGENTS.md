@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-The Rust 2021 backend lives in `src/`. `main.rs` configures the Axum server, `handlers/` groups daily, monthly, yearly, and miscellaneous API routes, `db.rs` owns SQLite synchronization, and `pricing.rs`, `timeline.rs`, and `paths.rs` contain focused domain logic. The companion CLI is `src/bin/token-usage-insights-cli.rs`. Browser assets are plain HTML, JavaScript, and CSS under `static/`; keep component styles in `static/css/`. Platform installers and smoke tests live in `scripts/`, while status-line collectors and the systemd template live in `shell/`. Update `pricing.csv` when model rates change.
+The Rust 2021 backend lives in `src/`. `main.rs` configures the Axum server, `handlers/` groups daily, monthly, yearly, and miscellaneous API routes, `db.rs` owns SQLite synchronization, and `pricing.rs`, `timeline.rs`, and `paths.rs` contain focused domain logic. The companion CLI is `src/bin/joker-token-usage-insights-cli.rs`. Browser assets are plain HTML, JavaScript, and CSS under `static/`; keep component styles in `static/css/`. Platform installers and smoke tests live in `scripts/`, while status-line collectors and the systemd template live in `shell/`. Update `pricing.csv` when model rates change.
 
 ## Build, Test, and Development Commands
 
@@ -10,7 +10,7 @@ The Rust 2021 backend lives in `src/`. `main.rs` configures the Axum server, `ha
 - `make test` runs the Rust test suite.
 - `make lint` formats Rust and runs Clippy across all targets and features.
 - `make all` runs formatting, checks, tests, and a release build.
-- `cargo run --bin token-usage-insights-cli -- --help` exercises the companion CLI.
+- `cargo run --bin joker-token-usage-insights-cli -- --help` exercises the companion CLI.
 - On Windows, `.\scripts\build.ps1` runs locked release tests and builds every target. Use `.\scripts\test-windows.ps1` after collector changes.
 
 CI sets `RUSTFLAGS="-D warnings"`. All binaries, tests, and Clippy checks must finish with zero warnings.

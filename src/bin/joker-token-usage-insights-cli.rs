@@ -26,15 +26,15 @@ const HELP_TEXT: &str = r#"Token 使用量 CLI 匯入 / 匯出工具
                      亦可使用 claude-code / claude_code / claudecode（會正規化為 claude）
 
 匯出:
-  token-usage-insights-cli export --agent <name> --date YYYY-MM-DD --out <path>
+  joker-token-usage-insights-cli export --agent <name> --date YYYY-MM-DD --out <path>
   例如:
-  token-usage-insights-cli export --agent codex --date 2026-07-09 --out daily.json
+  joker-token-usage-insights-cli export --agent codex --date 2026-07-09 --out daily.json
 
 匯入:
-  token-usage-insights-cli import --agent <name> --file <path> [--date YYYY-MM-DD]
+  joker-token-usage-insights-cli import --agent <name> --file <path> [--date YYYY-MM-DD]
   例如:
-  token-usage-insights-cli import --agent codex --file daily.json
-  token-usage-insights-cli import --agent codex --file daily.json --date 2026-07-09
+  joker-token-usage-insights-cli import --agent codex --file daily.json
+  joker-token-usage-insights-cli import --agent codex --file daily.json --date 2026-07-09
 
 注意:
   - 若未指定 export 的 --out，會直接輸出到 stdout
@@ -431,7 +431,7 @@ fn print_help() {
 fn print_export_help() {
     println!(
         r#"export usage:
-  token-usage-insights-cli export --agent <name> --date YYYY-MM-DD --out <path>
+  joker-token-usage-insights-cli export --agent <name> --date YYYY-MM-DD --out <path>
 
 參數:
   --agent <name>    助理名稱（antigravity/copilot/codex/claude/cursor）
@@ -445,7 +445,7 @@ fn print_export_help() {
 fn print_import_help() {
     println!(
         r#"import usage:
-  token-usage-insights-cli import --agent <name> --file <path> [--date YYYY-MM-DD]
+  joker-token-usage-insights-cli import --agent <name> --file <path> [--date YYYY-MM-DD]
 
 參數:
   --agent <name>      助理名稱（antigravity/copilot/codex/claude/cursor）
