@@ -156,6 +156,9 @@ fn build_usage_entry_import_source_id(assistant: &str, date: &str, entry: &Usage
     format!("{:016x}", hash_fnv1a_64(&signature))
 }
 
+/// Kept unchanged across the rebrand so legacy data directories stay readable.
+const DB_FILE_NAME: &str = "token_usage_insights.db";
+
 /// Directory resolution helpers
 pub fn get_insights_dir() -> PathBuf {
     if let Some(path) = crate::paths::env_path("INSIGHTS_DIR") {
@@ -164,13 +167,28 @@ pub fn get_insights_dir() -> PathBuf {
 
     #[cfg(windows)]
     if let Some(data_dir) = dirs::data_local_dir() {
-        return data_dir.join("TokenUsageInsights");
+        return resolve_default_insights_dir(
+            data_dir.join("joker_TokenUsageInsights"),
+            data_dir.join("TokenUsageInsights"),
+        );
     }
 
     if let Some(home) = dirs::home_dir() {
-        return home.join(".token-usage-insights");
+        return resolve_default_insights_dir(
+            home.join(".joker-token-usage-insights"),
+            home.join(".token-usage-insights"),
+        );
     }
     PathBuf::from(".")
+}
+
+/// Keeps using the pre-rebrand data directory while it still holds the only
+/// database, so existing installs keep their history without moving files.
+fn resolve_default_insights_dir(preferred: PathBuf, legacy: PathBuf) -> PathBuf {
+    if !preferred.join(DB_FILE_NAME).exists() && legacy.join(DB_FILE_NAME).exists() {
+        return legacy;
+    }
+    preferred
 }
 
 pub fn get_antigravity_dir() -> PathBuf {
@@ -258,14 +276,11 @@ fn legacy_unified_database_paths() -> Vec<PathBuf> {
     let mut paths = Vec::new();
     if let Some(home) = dirs::home_dir() {
         #[cfg(windows)]
-        paths.push(
-            home.join(".token-usage-insights")
-                .join("token_usage_insights.db"),
-        );
+        paths.push(home.join(".token-usage-insights").join(DB_FILE_NAME));
         paths.push(
             home.join(".gemini")
                 .join("antigravity-cli")
-                .join("token_usage_insights.db"),
+                .join(DB_FILE_NAME),
         );
     }
     paths
@@ -275,7 +290,7 @@ fn legacy_unified_database_paths() -> Vec<PathBuf> {
 pub fn get_db_conn() -> Result<Connection, String> {
     let dir = get_insights_dir();
     fs::create_dir_all(&dir).map_err(|error| format!("無法建立資料庫目錄 {:?}: {}", dir, error))?;
-    let db_path = dir.join("token_usage_insights.db");
+    let db_path = dir.join(DB_FILE_NAME);
 
     // Automatically move old centralized database if it exists in the legacy folder
     if !db_path.exists() {
@@ -3584,6 +3599,47 @@ mod tests {
             unique
         ));
         path
+    }
+
+    fn temp_insights_root(prefix: &str) -> PathBuf {
+        let root = temp_jsonl_path(prefix).with_extension("");
+        fs::create_dir_all(&root).unwrap();
+        root
+    }
+
+    #[test]
+    fn default_insights_dir_prefers_new_location_for_fresh_installs() {
+        let root = temp_insights_root("insights-fresh");
+        let preferred = root.join("new");
+        let legacy = root.join("legacy");
+
+        assert_eq!(
+            resolve_default_insights_dir(preferred.clone(), legacy),
+            preferred
+        );
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn default_insights_dir_falls_back_to_legacy_database() {
+        let root = temp_insights_root("insights-legacy");
+        let preferred = root.join("new");
+        let legacy = root.join("legacy");
+        fs::create_dir_all(&legacy).unwrap();
+        fs::write(legacy.join(DB_FILE_NAME), b"").unwrap();
+
+        assert_eq!(
+            resolve_default_insights_dir(preferred.clone(), legacy.clone()),
+            legacy
+        );
+
+        fs::create_dir_all(&preferred).unwrap();
+        fs::write(preferred.join(DB_FILE_NAME), b"").unwrap();
+        assert_eq!(
+            resolve_default_insights_dir(preferred.clone(), legacy),
+            preferred
+        );
+        let _ = fs::remove_dir_all(&root);
     }
 
     fn sample_import_record() -> UsageDayExportRecord {

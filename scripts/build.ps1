@@ -1,11 +1,11 @@
 <#
 .SYNOPSIS
-  Build Token 戰情室 release executables on Windows.
+  Build joker_TokenUsageInsights release executables on Windows.
 
 .DESCRIPTION
   Wraps `cargo build --release` for both the dashboard server binary
-  (token-usage-insights.exe) and the CLI import/export tool
-  (token-usage-insights-cli.exe). Requires the Rust MSVC toolchain and the
+  (joker-token-usage-insights.exe) and the CLI import/export tool
+  (joker-token-usage-insights-cli.exe). Requires the Rust MSVC toolchain and the
   Visual Studio Build Tools C++ workload (see README.md).
 
   By default this treats any compiler warning as a build failure, matching
@@ -95,5 +95,5 @@ $outDir = if ($Target) { "target\$Target\release" } else { "target\release" }
 Write-Host ""
 Write-Host "Build succeeded with no warnings or errors."
 Write-Host "Executables:"
-Write-Host "  $outDir\token-usage-insights.exe"
-Write-Host "  $outDir\token-usage-insights-cli.exe"
+Write-Host "  $outDir\joker-token-usage-insights.exe"
+Write-Host "  $outDir\joker-token-usage-insights-cli.exe"

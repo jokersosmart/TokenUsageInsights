@@ -1,7 +1,7 @@
 const i18n = {
   'zh-TW': {
     title: 'AI CLI Token 看板',
-    brand_title: 'Token 戰情室',
+    brand_title: 'Joker Token 戰情室',
     sidebar_toggle_open: '開啟側邊欄（快速鍵：⌘B / Ctrl+B）',
     sidebar_toggle_collapse: '收合側邊欄（快速鍵：⌘B / Ctrl+B）',
     select_assistant: '選擇 Agent 類型',
@@ -334,7 +334,7 @@ const i18n = {
   },
   'en': {
     title: 'AI CLI Token Insights',
-    brand_title: 'Token War Room',
+    brand_title: 'Joker Token War Room',
     sidebar_toggle_open: 'Open sidebar (Shortcut: ⌘B / Ctrl+B)',
     sidebar_toggle_collapse: 'Collapse sidebar (Shortcut: ⌘B / Ctrl+B)',
     select_assistant: 'Select Agent',

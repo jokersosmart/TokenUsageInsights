@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-app_name="token-usage-insights"
+app_name="joker-token-usage-insights"
 default_install_dir="${HOME}/.local/share/${app_name}"
 default_bin_dir="${HOME}/.local/bin"
 
-install_dir="${TOKEN_USAGE_INSIGHTS_INSTALL_DIR:-$default_install_dir}"
-bin_dir="${TOKEN_USAGE_INSIGHTS_BIN_DIR:-$default_bin_dir}"
+install_dir="${JOKER_TOKEN_USAGE_INSIGHTS_INSTALL_DIR:-${TOKEN_USAGE_INSIGHTS_INSTALL_DIR:-$default_install_dir}}"
+bin_dir="${JOKER_TOKEN_USAGE_INSIGHTS_BIN_DIR:-${TOKEN_USAGE_INSIGHTS_BIN_DIR:-$default_bin_dir}}"
 port="${PORT:-3003}"
 install_service=false
 
@@ -15,12 +15,13 @@ usage() {
 Usage: ./install.sh [--service]
 
 Environment:
-  TOKEN_USAGE_INSIGHTS_INSTALL_DIR  Install directory. Default: ${default_install_dir}
-  TOKEN_USAGE_INSIGHTS_BIN_DIR      Directory for the executable link. Default: ${default_bin_dir}
-  PORT                              Dashboard port. Default: 3003
+  JOKER_TOKEN_USAGE_INSIGHTS_INSTALL_DIR  Install directory. Default: ${default_install_dir}
+  JOKER_TOKEN_USAGE_INSIGHTS_BIN_DIR      Directory for the executable link. Default: ${default_bin_dir}
+  PORT                                    Dashboard port. Default: 3003
+  (The pre-rebrand TOKEN_USAGE_INSIGHTS_* names are still accepted.)
 
 Options:
-  --service                         Install and enable a systemd user service on Linux.
+  --service                               Install and enable a systemd user service on Linux.
 USAGE
 }
 
@@ -52,7 +53,7 @@ fi
 binary_src="${release_dir}/${app_name}"
 if [[ ! -f "$binary_src" ]]; then
   echo "Missing executable: ${binary_src}" >&2
-  echo "Run this installer from an extracted Token 戰情室 release package." >&2
+  echo "Run this installer from an extracted joker_TokenUsageInsights release package." >&2
   exit 1
 fi
 
@@ -90,7 +91,7 @@ if [[ "$install_service" == true ]]; then
   mkdir -p "$service_dir"
   cat > "$service_file" <<SERVICE
 [Unit]
-Description=Token 戰情室 Dashboard Service
+Description=Joker Token 戰情室 (joker_TokenUsageInsights) Dashboard Service
 After=network.target
 
 [Service]
@@ -110,7 +111,7 @@ SERVICE
 fi
 
 cat <<DONE
-Token 戰情室 installed.
+joker_TokenUsageInsights installed.
 
 Install directory:
   ${install_dir}

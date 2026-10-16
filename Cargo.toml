@@ -1,8 +1,11 @@
 [package]
-name = "token-usage-insights"
+name = "joker-token-usage-insights"
 version = "0.1.5"
 edition = "2021"
-default-run = "token-usage-insights"
+default-run = "joker-token-usage-insights"
+description = "joker_TokenUsageInsights: local-first AI CLI token usage dashboard (derived from doggy8088/TokenUsageInsights)"
+license = "MIT"
+repository = "https://github.com/jokersosmart/joker_TokenUsageInsights"
 
 [dependencies]
 axum = "0.7"

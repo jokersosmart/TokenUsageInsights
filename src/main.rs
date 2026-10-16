@@ -144,7 +144,10 @@ async fn main() {
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port))
         .await
         .unwrap();
-    println!("🚀 Token 戰情室 is running on: http://localhost:{}", port);
+    println!(
+        "🚀 Joker Token 戰情室 (joker_TokenUsageInsights) is running on: http://localhost:{}",
+        port
+    );
 
     axum::serve(listener, app).await.unwrap();
 }

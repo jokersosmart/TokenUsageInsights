@@ -1,6 +1,8 @@
-# Token 戰情室
+# joker_TokenUsageInsights（Joker Token 戰情室）
 
-**Token 戰情室是本地優先的 AI CLI Token 使用量與會話還原看板。** 它會讀取本機上的 Google Antigravity CLI、GitHub Copilot CLI、Codex CLI 與 Claude Code 記錄，集中呈現每日、月度、年度的 Token 消耗、快取使用、推理 Token、估算費用、模型分佈、專案目錄分佈與完整 Session 時間軸。
+> 本專案衍生自 [doggy8088/TokenUsageInsights](https://github.com/doggy8088/TokenUsageInsights)（原作者 wengct, Will 保哥），依 [MIT 授權](LICENSE) 修改與再散布，由 Joker（[jokersosmart](https://github.com/jokersosmart)）維護於 [jokersosmart/joker_TokenUsageInsights](https://github.com/jokersosmart/joker_TokenUsageInsights)。功能與上游相同，僅調整品牌、套件與安裝路徑命名。
+
+**Joker Token 戰情室是本地優先的 AI CLI Token 使用量與會話還原看板。** 它會讀取本機上的 Google Antigravity CLI、GitHub Copilot CLI、Codex CLI 與 Claude Code 記錄，集中呈現每日、月度、年度的 Token 消耗、快取使用、推理 Token、估算費用、模型分佈、專案目錄分佈與完整 Session 時間軸。
 
 本專案不會替你呼叫 AI 供應商 API 查詢資料；核心資料來源是本機日誌、Status Line 收集檔與本機 SQLite。
 
@@ -15,13 +17,13 @@
 Linux / macOS：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/doggy8088/TokenUsageInsights/improve/scripts/get.sh | bash && "$HOME/.local/bin/token-usage-insights"
+curl -fsSL https://raw.githubusercontent.com/jokersosmart/joker_TokenUsageInsights/improve/scripts/get.sh | bash && "$HOME/.local/bin/joker-token-usage-insights"
 ```
 
 Windows PowerShell：
 
 ```powershell
-irm https://raw.githubusercontent.com/doggy8088/TokenUsageInsights/improve/scripts/get.ps1 | iex; & "$HOME\bin\token-usage-insights.cmd"
+irm https://raw.githubusercontent.com/jokersosmart/joker_TokenUsageInsights/improve/scripts/get.ps1 | iex; & "$HOME\bin\joker-token-usage-insights.cmd"
 ```
 
 上述指令會下載與安裝目前平台的已編譯版本，不需要 Rust、Cargo、WSL 或手動解壓縮。安裝完成後，看板會在本機執行。
@@ -45,13 +47,13 @@ http://localhost:3003
 
 ### Windows 原生使用
 
-Windows 的一行安裝會建立 `%USERPROFILE%\bin\token-usage-insights.cmd` 啟動檔；不需要 Rust MSVC toolchain、Visual Studio Build Tools、WSL、Git Bash 或 `jq`。
+Windows 的一行安裝會建立 `%USERPROFILE%\bin\joker-token-usage-insights.cmd` 啟動檔；不需要 Rust MSVC toolchain、Visual Studio Build Tools、WSL、Git Bash 或 `jq`。
 
 Windows 預設使用下列原生路徑：
 
 | 用途 | Windows 預設路徑 |
 | --- | --- |
-| SQLite | `%LOCALAPPDATA%\TokenUsageInsights\token_usage_insights.db` |
+| SQLite | `%LOCALAPPDATA%\joker_TokenUsageInsights\token_usage_insights.db` |
 | Antigravity | `%USERPROFILE%\.gemini\antigravity-cli` |
 | Copilot | `%USERPROFILE%\.copilot` |
 | Codex | `%USERPROFILE%\.codex` |
@@ -110,10 +112,10 @@ Antigravity CLI 需要把本專案的 Status Line 腳本接到 `settings.json`�
 完成一行安裝後，執行：
 
 ```bash
-mkdir -p ~/.gemini/antigravity-cli && cp ~/.local/share/token-usage-insights/shell/antigravity/statusline-token.sh ~/.gemini/antigravity-cli/statusline-token.sh && chmod +x ~/.gemini/antigravity-cli/statusline-token.sh
+mkdir -p ~/.gemini/antigravity-cli && cp ~/.local/share/joker-token-usage-insights/shell/antigravity/statusline-token.sh ~/.gemini/antigravity-cli/statusline-token.sh && chmod +x ~/.gemini/antigravity-cli/statusline-token.sh
 ```
 
-若使用自訂安裝位置，請將指令中的 `~/.local/share/token-usage-insights` 替換為 `TOKEN_USAGE_INSIGHTS_INSTALL_DIR` 指定的位置。
+若使用自訂安裝位置，請將指令中的 `~/.local/share/joker-token-usage-insights` 替換為 `JOKER_TOKEN_USAGE_INSIGHTS_INSTALL_DIR` 指定的位置。
 
 ### 2. 設定 `~/.gemini/antigravity-cli/settings.json`
 
@@ -159,10 +161,10 @@ Copilot CLI 與 Antigravity CLI 一樣，需要把本專案的 Status Line 腳�
 完成一行安裝後，執行：
 
 ```bash
-mkdir -p ~/.copilot && cp ~/.local/share/token-usage-insights/shell/copilot/statusline-token.sh ~/.copilot/statusline-token.sh && chmod +x ~/.copilot/statusline-token.sh
+mkdir -p ~/.copilot && cp ~/.local/share/joker-token-usage-insights/shell/copilot/statusline-token.sh ~/.copilot/statusline-token.sh && chmod +x ~/.copilot/statusline-token.sh
 ```
 
-若使用自訂安裝位置，請將指令中的 `~/.local/share/token-usage-insights` 替換為 `TOKEN_USAGE_INSIGHTS_INSTALL_DIR` 指定的位置。
+若使用自訂安裝位置，請將指令中的 `~/.local/share/joker-token-usage-insights` 替換為 `JOKER_TOKEN_USAGE_INSIGHTS_INSTALL_DIR` 指定的位置。
 
 ### 2. 設定 `~/.copilot/settings.json`
 
@@ -248,8 +250,10 @@ jq . ~/.copilot/settings.json
 SQLite 預設位置：
 
 ```text
-~/.token-usage-insights/token_usage_insights.db
+~/.joker-token-usage-insights/token_usage_insights.db
 ```
+
+從上游 Token 戰情室升級時：若新目錄尚無資料庫，而舊目錄（`~/.token-usage-insights`，Windows 為 `%LOCALAPPDATA%\TokenUsageInsights`）已有 `token_usage_insights.db`，程式會直接沿用舊目錄，不會搬移或改寫舊檔。若想改用新目錄，停止服務後把舊資料庫移到新目錄即可。
 
 前端右上角的同步按鈕會呼叫：
 
@@ -272,24 +276,24 @@ CLI 工具僅提供給從原始碼建置的進階使用者；Release 安裝包�
 先建置一次：
 
 ```bash
-cargo build --release --bin token-usage-insights-cli
+cargo build --release --bin joker-token-usage-insights-cli
 ```
 
 ```bash
 # 匯出（輸出 JSON，含匯入唯一 id）
-./target/release/token-usage-insights-cli export --agent codex --date 2026-07-09 --out daily-codex-2026-07-09.json
+./target/release/joker-token-usage-insights-cli export --agent codex --date 2026-07-09 --out daily-codex-2026-07-09.json
 ```
 
 ```bash
 # 匯入（以匯入結果中的 date 或 `--date` 為準）
-./target/release/token-usage-insights-cli import --agent codex --file daily-codex-2026-07-09.json
+./target/release/joker-token-usage-insights-cli import --agent codex --file daily-codex-2026-07-09.json
 ```
 
 ```bash
 # 取得 CLI usage 說明
-./target/release/token-usage-insights-cli --help
-./target/release/token-usage-insights-cli export --help
-./target/release/token-usage-insights-cli import --help
+./target/release/joker-token-usage-insights-cli --help
+./target/release/joker-token-usage-insights-cli export --help
+./target/release/joker-token-usage-insights-cli import --help
 ```
 
 資料格式使用和前端一致，內含欄位：
@@ -311,7 +315,7 @@ cargo build --release --bin token-usage-insights-cli
 | 變數 | 預設值 | 用途 |
 | --- | --- | --- |
 | `PORT` | `3003` | 看板服務埠號 |
-| `INSIGHTS_DIR` | Windows: `%LOCALAPPDATA%\TokenUsageInsights`; 其他平台: `~/.token-usage-insights` | SQLite 資料庫目錄 |
+| `INSIGHTS_DIR` | Windows: `%LOCALAPPDATA%\joker_TokenUsageInsights`; 其他平台: `~/.joker-token-usage-insights`（舊目錄已有資料庫時沿用舊目錄） | SQLite 資料庫目錄 |
 | `ANTIGRAVITY_DIR` | `~/.gemini/antigravity-cli` | Antigravity CLI 資料目錄 |
 | `COPILOT_DIR` | `~/.copilot` | Copilot CLI 資料目錄 |
 | `CODEX_DIR` | `~/.codex` | Codex CLI 資料目錄 |
@@ -323,13 +327,13 @@ cargo build --release --bin token-usage-insights-cli
 範例：
 
 ```bash
-INSIGHTS_DIR="/tmp/token-usage-insights" PORT="3010" "$HOME/.local/bin/token-usage-insights"
+INSIGHTS_DIR="/tmp/joker-token-usage-insights" PORT="3010" "$HOME/.local/bin/joker-token-usage-insights"
 ```
 
 Windows PowerShell 範例：
 
 ```powershell
-$env:INSIGHTS_DIR = 'D:\Token Usage Insights\資料庫'; $env:CODEX_DIR = "$env:USERPROFILE\.codex"; $env:PORT = '3010'; & "$HOME\bin\token-usage-insights.cmd"
+$env:INSIGHTS_DIR = 'D:\Token Usage Insights\資料庫'; $env:CODEX_DIR = "$env:USERPROFILE\.codex"; $env:PORT = '3010'; & "$HOME\bin\joker-token-usage-insights.cmd"
 ```
 
 * * *
@@ -339,18 +343,18 @@ $env:INSIGHTS_DIR = 'D:\Token Usage Insights\資料庫'; $env:CODEX_DIR = "$env:
 ### Linux：一行安裝並啟用 systemd 使用者服務
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/doggy8088/TokenUsageInsights/improve/scripts/get.sh | bash -s -- --service
+curl -fsSL https://raw.githubusercontent.com/jokersosmart/joker_TokenUsageInsights/improve/scripts/get.sh | bash -s -- --service
 ```
 
-這會下載安裝版並立即啟用 `token-usage-insights.service`，不需要自行建置或修改 systemd 檔案。
+這會下載安裝版並立即啟用 `joker-token-usage-insights.service`，不需要自行建置或修改 systemd 檔案。
 
 ### 管理服務
 
 ```bash
-systemctl --user status token-usage-insights.service
-journalctl --user -u token-usage-insights.service -n 50 -f
-systemctl --user restart token-usage-insights.service
-systemctl --user stop token-usage-insights.service
+systemctl --user status joker-token-usage-insights.service
+journalctl --user -u joker-token-usage-insights.service -n 50 -f
+systemctl --user restart joker-token-usage-insights.service
+systemctl --user stop joker-token-usage-insights.service
 ```
 
 * * *
@@ -366,39 +370,41 @@ GitHub Release 提供 Linux、macOS 與 Windows 的已編譯可執行檔，安�
 Linux / macOS：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/doggy8088/TokenUsageInsights/improve/scripts/get.sh | bash
+curl -fsSL https://raw.githubusercontent.com/jokersosmart/joker_TokenUsageInsights/improve/scripts/get.sh | bash
 ```
 
 Linux 如需同時安裝並啟用 systemd user service：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/doggy8088/TokenUsageInsights/improve/scripts/get.sh | bash -s -- --service
+curl -fsSL https://raw.githubusercontent.com/jokersosmart/joker_TokenUsageInsights/improve/scripts/get.sh | bash -s -- --service
 ```
 
 Windows PowerShell：
 
 ```powershell
-irm https://raw.githubusercontent.com/doggy8088/TokenUsageInsights/improve/scripts/get.ps1 | iex
+irm https://raw.githubusercontent.com/jokersosmart/joker_TokenUsageInsights/improve/scripts/get.ps1 | iex
 ```
 
 安裝完成後即可執行（Linux/macOS 需確認 `bin_dir` 已加入 `PATH`；Windows 會建立 `.cmd` shim）：
 
 ```bash
-token-usage-insights
+joker-token-usage-insights
 ```
 
 環境變數可控制版本與安裝路徑（皆為選用）：
 
 | 變數 | 適用平台 | 說明 |
 | --- | --- | --- |
-| `TOKEN_USAGE_INSIGHTS_VERSION` | Linux / macOS / Windows | 指定要安裝的 Release tag，例如 `v0.1.5`。預設 `latest` |
-| `TOKEN_USAGE_INSIGHTS_INSTALL_DIR` | Linux / macOS | 安裝目錄，會轉交給 `install.sh` |
-| `TOKEN_USAGE_INSIGHTS_BIN_DIR` | Linux / macOS | 執行檔連結目錄，會轉交給 `install.sh` |
+| `JOKER_TOKEN_USAGE_INSIGHTS_VERSION` | Linux / macOS / Windows | 指定要安裝的 Release tag，例如 `v0.1.5`。預設 `latest` |
+| `JOKER_TOKEN_USAGE_INSIGHTS_INSTALL_DIR` | Linux / macOS | 安裝目錄，會轉交給 `install.sh` |
+| `JOKER_TOKEN_USAGE_INSIGHTS_BIN_DIR` | Linux / macOS | 執行檔連結目錄，會轉交給 `install.sh` |
+
+上游的 `TOKEN_USAGE_INSIGHTS_*` 舊變數名稱仍可使用；同時設定時以 `JOKER_` 開頭的新名稱為準。
 
 Windows 若要自訂安裝位置、bin 目錄與埠號，需先下載腳本再帶參數執行（`iex` 管線不支援傳參數）：
 
 ```powershell
-Invoke-WebRequest -Uri https://raw.githubusercontent.com/doggy8088/TokenUsageInsights/improve/scripts/get.ps1 -OutFile get.ps1
+Invoke-WebRequest -Uri https://raw.githubusercontent.com/jokersosmart/joker_TokenUsageInsights/improve/scripts/get.ps1 -OutFile get.ps1
 .\get.ps1 -InstallDir 'D:\Apps\Token Usage Insights' -Port 3010
 ```
 
@@ -416,8 +422,8 @@ Invoke-WebRequest -Uri https://raw.githubusercontent.com/doggy8088/TokenUsageIns
 Linux 或 macOS：
 
 ```bash
-tar -xzf token-usage-insights-<tag>-<target>.tar.gz
-cd token-usage-insights-<tag>-<target>
+tar -xzf joker-token-usage-insights-<tag>-<target>.tar.gz
+cd joker-token-usage-insights-<tag>-<target>
 ./install.sh
 ```
 
@@ -430,8 +436,8 @@ Linux 如需安裝並啟用 systemd user service：
 Windows：
 
 ```powershell
-Expand-Archive token-usage-insights-<tag>-x86_64-pc-windows-msvc.zip
-cd token-usage-insights-<tag>-x86_64-pc-windows-msvc
+Expand-Archive joker-token-usage-insights-<tag>-x86_64-pc-windows-msvc.zip
+cd joker-token-usage-insights-<tag>-x86_64-pc-windows-msvc
 powershell -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
@@ -544,7 +550,7 @@ jq . ~/.copilot/settings.json
 ### 連不上 `localhost:3003`
 
 ```bash
-PORT=3010 "$HOME/.local/bin/token-usage-insights"
+PORT=3010 "$HOME/.local/bin/joker-token-usage-insights"
 ```
 
 若改用其他埠號，請開啟對應網址，例如：
@@ -560,14 +566,30 @@ http://localhost:3010
 本節僅供需要修改或從原始碼建置專案的開發者使用；一般使用請採用前述一行安裝指令。
 
 ```bash
-git clone https://github.com/doggy8088/TokenUsageInsights.git
-cd TokenUsageInsights
+git clone https://github.com/jokersosmart/joker_TokenUsageInsights.git
+cd joker_TokenUsageInsights
 cargo fmt
 cargo test
 cargo clippy --all-targets --all-features
 cargo build --release
-./target/release/token-usage-insights
+./target/release/joker-token-usage-insights
 ```
+
+* * *
+
+## 命名對照
+
+| 用途 | 名稱 |
+| --- | --- |
+| GitHub repo、文件標題 | `jokersosmart/joker_TokenUsageInsights` |
+| 介面品牌 | 「Joker Token 戰情室」／ "Joker Token War Room" |
+| Cargo 套件、主程式、Linux/macOS 安裝目錄、systemd 服務 | `joker-token-usage-insights` |
+| 匯入／匯出 CLI | `joker-token-usage-insights-cli` |
+| Release 壓縮檔 | `joker-token-usage-insights-<tag>-<target>.(tar.gz\|zip)` |
+| Windows 安裝與資料目錄 | `%LOCALAPPDATA%\joker_TokenUsageInsights` |
+| 其他平台資料目錄 | `~/.joker-token-usage-insights` |
+| 安裝腳本環境變數 | `JOKER_TOKEN_USAGE_INSIGHTS_*` |
+| SQLite 檔名（維持不變以相容舊資料） | `token_usage_insights.db` |
 
 * * *
 
@@ -585,8 +607,8 @@ pricing.csv          模型價格表，本地估算費用依此檔案載入
 
 ## 畫面展示
 
-![Token 戰情室每日看板](screenshots/codex-daily-2026-07-07-desktop-chrome.png)
+![Joker Token 戰情室每日看板](screenshots/codex-daily-2026-07-07-desktop-chrome.png)
 
-![Token 戰情室月度看板](screenshots/codex-daily-2026-07-07.png)
+![Joker Token 戰情室月度看板](screenshots/codex-daily-2026-07-07.png)
 
-![Token 戰情室 Session 時間軸](screenshots/codex-daily-2026-07-07-desktop-chrome.png)
+![Joker Token 戰情室 Session 時間軸](screenshots/codex-daily-2026-07-07-desktop-chrome.png)
