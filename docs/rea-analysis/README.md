@@ -454,7 +454,191 @@ GET http://localhost:3003/api/copilot/usage/2026-10-15
 
 ### 6.7 後端：Ghidra 深度分析
 
-<!-- GHIDRA_SECTION -->
+這是最花時間的一步。Ghidra 每次分析都會建立一個暫時專案、導入執行檔、跑完整套自動分析，關閉時刪除。這個 6 MB 的 Rust 執行檔在 4 核心 VM 上每次需要約 **12 分鐘**。
+
+#### 第一次：逾時失敗
+
+```bash
+rea analyze $BIN --provider ghidra --snapshot /tmp/rea/ghidra-snapshot.json --json
+```
+
+約 5.5 分鐘後 exit 1（[`raw/ghidra-analyze-attempt1-timeout.json`](raw/ghidra-analyze-attempt1-timeout.json)）：
+
+```json
+{"error":"Analysis failed","code":"provider_timeout","category":"timeout",
+ "message":"Analysis took too long. Try a smaller request, then run `rea doctor` if it continues.",
+ "details":{"operation":"list_documents","timeout_ms":330000, ...}}
+```
+
+錯誤細節中的 Ghidra log 顯示，被中止時它還在跑 `GccExceptionAnalyzer` 與 `DecompilerSwitchAnalyzer`，也就是還沒分析完，不是當掉。REA 文件（`docs/mcp-contracts.md`）說明預設啟動期限是 330,000 ms，可以用 `REA_GHIDRA_STARTUP_TIMEOUT_MS` 調整。
+
+#### 第二次：成功
+
+```bash
+export REA_GHIDRA_STARTUP_TIMEOUT_MS=1800000   # 30 分鐘
+rea analyze $BIN --provider ghidra --snapshot /tmp/rea/ghidra-snapshot.json --json
+```
+
+從 10:29:18 跑到 10:42:11，exit 0（[`raw/ghidra-analyze.json`](raw/ghidra-analyze.json)）：
+
+```json
+"normalized_result": {
+  "document": "target-370028f6399c.bin",
+  "image_base": "0x100000",
+  "segment_count": 35,
+  "procedure_count": 7390,
+  "string_count": 11835
+}
+```
+
+#### 用 MCP 模式在同一個 session 裡連續查詢
+
+CLI 每次呼叫都是獨立的程序，`--snapshot` 只能重用「完全相同的查詢」，所以每換一個問題（搜尋、反編譯）就要再等 12 分鐘。因此我改用 `rea --mcp`（MCP stdio 伺服器模式），寫了一個小腳本（[`scripts/mcp-ghidra.mjs`](scripts/mcp-ghidra.mjs)）依序呼叫 `open_binary` → `binary_overview` → 多個查詢 → `close_binary`，只需導入一次。
+
+第一個 session（[`raw/ghidra-mcp-session1.json`](raw/ghidra-mcp-session1.json)）：`binary_overview` 花了 713,620 ms（等 Ghidra 分析完），之後每個查詢只要幾毫秒。
+
+| 查詢 | 結果 |
+| --- | --- |
+| `search_procedures("calculate_cost")` | `0x20ac30  joker_token_usage_insights::pricing::calculate_cost` |
+| `search_procedures("sync_usage_logs")` | `0x1732f0  joker_token_usage_insights::db::sync_usage_logs` |
+| `search_strings("CREATE TABLE IF NOT EXISTS")` | 5 筆：`usage_entries`（`0x4d208a`）、`sync_state`、`cursor_model_signatures`、`cursor_session_metadata`，以及 `%Q.'%q_stat'(id INTEGER PRIMARY KEY, value BLOB)` |
+| `search_strings("/api/")` | **空的** `[]` |
+| `search_strings("pricing.csv")` | **空的** `[]` |
+| `search_strings("272k")` | **空的** `[]` |
+
+我的腳本原本要從搜尋結果自動取出 `calculate_cost` 的位址再反編譯，但我寫的正規表示式假設欄位叫 `name`，實際回傳的欄位是 `value`，所以這一步沒執行到。第二個 session（[`scripts/mcp-ghidra2.mjs`](scripts/mcp-ghidra2.mjs)、[`raw/ghidra-mcp-session2.json`](raw/ghidra-mcp-session2.json)）直接使用位址 `0x20ac30` 重做。
+
+#### `calculate_cost` 的反編譯結果
+
+`procedure_pseudo_code("0x20ac30")`，完整 166 行見 [`raw/ghidra-calculate-cost-pseudocode.c`](raw/ghidra-calculate-cost-pseudocode.c)。以下是關鍵片段（Ghidra 原始輸出，未修改）：
+
+```c
+/* joker_token_usage_insights::pricing::calculate_cost */
+undefined8 * __rustcall
+joker_token_usage_insights::pricing::calculate_cost
+          (undefined8 *param_1,long param_2,long param_3,undefined8 param_4,undefined8 param_5,
+          long param_6,long param_7,long param_8)
+{
+  ...
+  parse_threshold_rule(&local_d0,param_4,param_5);
+  ...
+      local_90 = param_7 + local_98 + param_8;
+      ...
+      do {
+        parse_threshold_rule(&local_d0,*(undefined8 *)(lVar10 + 8),*(undefined8 *)(lVar10 + 0x10));
+        ...
+          iVar8 = bcmp(local_c8,__s2,(size_t)__n);
+          ...
+          if ((bVar6 == 2) || (((0x42680 < local_90 ^ bVar6) & 1) == 0)) goto LAB_0020af8a;
+        ...
+        lVar10 = lVar10 + 0x30;
+      } while (param_3 != 0);
+      ...
+      do {
+        ...
+          cVar7 = <&str_as_core::str::pattern::Pattern>::is_contained_in(local_c8,local_c0,__s2,__n)
+          ;
+          if ((cVar7 == '\0') &&
+             (cVar7 = <&str_as_core::str::pattern::Pattern>::is_contained_in
+                                (__s2,__n,puVar4,ppuVar5), cVar7 == '\0')) goto LAB_0020aec0;
+        ...
+LAB_0020af8a:
+  local_a0[1] = (... param_7 ... / 1000000.0) * *(double *)(lVar10 + 0x28) +
+                (... param_8 ... / 1000000.0) * *(double *)(lVar10 + 0x20) +
+                (... local_98 ... / 1000000.0) * *(double *)(lVar10 + 0x18);
+  *local_a0 = 0x8000000000000000;
+```
+
+**怎麼讀這段反編譯結果**（對照 `src/pricing.rs`）：
+
+| 反編譯中看到的 | 對應的原始碼 |
+| --- | --- |
+| `param_2`、`param_3` | `rules: &[PricingRule]` 的指標與長度 |
+| `param_4`、`param_5` | `model_name: &str` 的指標與長度 |
+| `param_6`、`param_7`、`param_8` | `input`、`output`、`cache_read` |
+| `local_90 = param_7 + local_98 + param_8` | `let total_context = input + cache_read + output;` |
+| `0x42680` | 十六進位，等於十進位 **272000**，就是 `total_context > 272_000` |
+| `bVar6 == 2` | `parse_threshold_rule` 回傳的 `Option<bool>` 是 `None`（Rust 用 0 / 1 / 2 表示 `Some(false)` / `Some(true)` / `None`） |
+| 第一個迴圈用 `bcmp` 比較 | 第 1 步：名稱**完全相同** |
+| 第二個迴圈用 `is_contained_in` 雙向呼叫 | 第 2 步：`m_base.contains(&r_base) \|\| r_base.contains(&m_base)` |
+| 每次 `+ 0x30`，讀取 `+0x18`、`+0x20`、`+0x28` 的 `double` | 每條 `PricingRule` 佔 48 bytes：`String` 名稱（24 bytes）+ 三個 `f64` 價格（輸入、快取、輸出） |
+| `/ 1000000.0` 與三項相加 | `(input / 1M) * input_price + (cache_read / 1M) * cache_input_price + (output / 1M) * output_price` |
+| `0x45300000`、`1.9342813113834067e+25` 這些怪數字 | 編譯器把 64 位元無號整數（`u64`）轉成 `f64` 的標準技巧，對應 `input as f64` |
+| `format_inner` 兩處 | 兩個 `Err(format!(...))` 錯誤訊息 |
+| `*local_a0 = 0x8000000000000000` | 回傳 `Ok(...)`（Rust 利用 `String` 容量欄位的空位表示 `Result` 的變體） |
+
+也就是說，**即使完全沒有原始碼**，只靠 REA + Ghidra 也能還原出「272k 門檻、先完全比對再模糊比對、每百萬 token 計價」這些規則。
+
+#### 呼叫關係
+
+位址需要換算才看得到名稱：Ghidra 把執行檔載入在 `0x100000`，ELF 符號表則從 0 起算，所以 `Ghidra 位址 - 0x100000` 就是符號表位址。換算結果見 [`raw/ghidra-xrefs-resolved-names.json`](raw/ghidra-xrefs-resolved-names.json)。
+
+`procedure_callers("0x20ac30")`（誰呼叫了 `calculate_cost`）：
+
+```text
+0x1d6fa0 <F as axum::handler::Handler<(M,T1),S>>::call::{{closure}}
+0x1fbe50 joker_token_usage_insights::handlers::monthly::get_monthly_details::{{closure}}
+0x25233e joker_token_usage_insights::handlers::yearly::get_yearly_details::{{closure}} (+0x5e)
+0x254d64 joker_token_usage_insights::handlers::yearly::get_yearly_details::{{closure}} (+0x2a84)
+```
+
+`procedure_callees("0x1732f0")`（`sync_usage_logs` 呼叫了誰，共 61 個位址）中與本專案相關的：
+
+```text
+0x15bbb0 joker_token_usage_insights::db::get_antigravity_dir
+0x15bd00 joker_token_usage_insights::db::get_copilot_dir
+0x15bde0 joker_token_usage_insights::db::get_codex_dir
+0x15bfa0 joker_token_usage_insights::db::get_cursor_dir
+0x15dfd0 joker_token_usage_insights::db::sync_hook_usage_logs
+0x1610a0 joker_token_usage_insights::db::find_codex_session_files
+0x161550 joker_token_usage_insights::db::sync_claude_usage_logs
+0x167bf0 joker_token_usage_insights::db::sync_cursor_usage_logs
+```
+
+`procedure_callers("0x1732f0")`（誰呼叫了 `sync_usage_logs`）：
+
+```text
+0x1bc780 <tokio::runtime::blocking::task::BlockingTask<T> as core::future::future::Future>::poll
+0x1bcf10 <tokio::runtime::blocking::task::BlockingTask<T> as core::future::future::Future>::poll
+0x1cb270 <F as axum::handler::Handler<(M,T1,T2),S>>::call::{{closure}}
+```
+
+#### 用 `inspect-with-objdump` 交叉驗證呼叫點
+
+Ghidra 回報的「呼叫者」是以函式為單位，我想確認實際的 `call` 指令在哪裡：
+
+```bash
+rea inspect-with-objdump $BIN disassemble --json > objdump-disasm.json
+```
+
+1.4 秒完成、exit 0，但輸出有 35 MB，而且 REA 回報**被截斷**（[`raw/objdump-disassemble-extract.json`](raw/objdump-disassemble-extract.json)）：
+
+```json
+{"exit_code":null,"signal":"SIGKILL","output_truncated":true,"completion_status":"unknown",
+ "artifact_sha256_after":"370028f6...c81fd","artifact_changed":false}
+```
+
+在 REA 保留的反組譯文字（253,853 行）裡搜尋，找到的呼叫指令（ELF 位址，需加 `0x100000` 才是 Ghidra 位址）：
+
+```text
+bc85c: e8 8f 6a fb ff call 732f0 <..db15sync_usage_logs..>
+bcff0: e8 fb 62 fb ff call 732f0 <..db15sync_usage_logs..>
+cfb40: e8 ab 37 fa ff call 732f0 <..db15sync_usage_logs..>
+d8f1b: e8 10 1d 03 00 call 10ac30 <..pricing14calculate_cost..>
+fde28: e8 03 ce 00 00 call 10ac30 <..pricing14calculate_cost..>
+febd5: e8 56 c0 00 00 call 10ac30 <..pricing14calculate_cost..>
+```
+
+被截斷的範圍之後，我直接用系統的 `objdump -d`（REA 以外）補查，又找到 `154308`、`1550d4` 兩處 `calculate_cost` 呼叫，都位在 `handlers::yearly::get_yearly_details::{{closure}}`（`0x1522e0` 起）裡面。
+
+綜合結果：
+
+| 函式 | 原始碼中的呼叫處 | 機器碼中的 `call` 指令 | Ghidra 的「呼叫者」 |
+| --- | --- | --- | --- |
+| `calculate_cost` | daily 1 + monthly 2 + yearly 2 = 5 | 5（`d8f1b` 在 daily 的 axum handler closure 裡；`fde28`、`febd5` 在 monthly；`154308`、`1550d4` 在 yearly） | 4 個函式，其中 yearly 被拆成兩段（`+0x5e`、`+0x2a84`） |
+| `sync_usage_logs` | `main` 啟動時 1 + 背景迴圈 1 + `trigger_manual_sync` 1 = 3 | 3（`bc85c`、`bcff0` 在兩個 `spawn_blocking` 任務；`cfb40` 在 `main::{{closure}}`，`0xcf900` 起） | 2 個 `BlockingTask::poll` + **1 個 axum handler closure（錯誤）** |
+
+`cfb40` 這個呼叫點明明在 `main::{{closure}}` 範圍內，Ghidra 卻把它歸到 `0x1cb270` 開始的 axum handler closure。這是 Ghidra 的**函式邊界判斷錯誤**（Rust 的 async 狀態機程式碼很容易讓反組譯工具切錯函式），REA 的 analysis profile 也標示了 `function_boundary_observations: ghidra-function-boundary-limitations-v3`。
 
 ---
 
@@ -466,11 +650,16 @@ GET http://localhost:3003/api/copilot/usage/2026-10-15
 | --- | --- |
 | `static/` 有 13 個 `fetch` 呼叫，位置與所在函式名稱（`loadUsageData`、`openSessionTimeline`…） | `rg -n "fetch\(" static/app.js` 剛好 13 處，行號全部吻合 |
 | `startLiveRefresh` 裡有一個 100 ms 的 `setInterval`，以及一個延遲時間無法靜態決定的 `setInterval` | 第 1267 行是進度條（100 ms）；第 1277 行用變數 `refreshInterval`（來自下拉選單），所以 REA 標成 `null` 是正確的 |
-| `app.js` 從 `./i18n.js?v=20` 匯入 `default` | `app.js` 第 1 行附近的 `import i18n from './i18n.js?v=20'`，`i18n.js` 為 `export default i18n` |
+| `app.js` 從 `./i18n.js?v=20` 匯入 `default` | `app.js` 第 1 行 `import i18n from './i18n.js?v=20'`，`i18n.js` 為 `export default i18n` |
 | `localStorage` 的 `theme`、`lang` | 第 4251、248、592 行 |
 | 頁面依賴 jsDelivr 上的 Chart.js、marked、DOMPurify | `index.html` 第 25–29 行 |
 | ELF x86-64、PIE、NX、Full RELRO，動態連結 glibc | 標準 Rust release 設定 |
 | 推斷的 rustc commit `90b35a62…` | 本機 `rustc -vV` 的 `commit-hash: 90b35a6239c3d8bdabc530a6a0816f7ff89a0aaf`，完全一致 |
+| 動態函式庫只有 `libc`、`libm`、`libgcc_s`，沒有 `libsqlite3.so`；Ghidra 卻找到 SQLite 內部的 `%Q.'%q_stat'` SQL 字串 | `Cargo.toml` 的 `rusqlite = { features = ["bundled"] }`，SQLite 直接編進執行檔 |
+| Ghidra 找到 `calculate_cost`、`sync_usage_logs` 與 4 個 `CREATE TABLE` SQL 字串 | 名稱與 SQL 內容和 `pricing.rs`、`db::init_db` 一字不差 |
+| `calculate_cost` 反編譯中的 `0x42680`（272000）、完全比對迴圈 + 雙向 `contains` 迴圈、`/ 1000000.0` 計價公式 | `pricing.rs` 第 111–182 行的 `calculate_cost`，邏輯完全一致 |
+| `sync_usage_logs` 呼叫 `sync_hook_usage_logs`、`sync_claude_usage_logs`、`sync_cursor_usage_logs`、`find_codex_session_files` | `db.rs` 第 2512–2542 行依序同步 5 種助理（Codex 那段被 inline，見下一節） |
+| `calculate_cost` 有 5 個 `call` 指令，分佈在 daily / monthly / yearly | 原始碼中 `daily.rs` 1 處、`monthly.rs` 2 處、`yearly.rs` 2 處 |
 | 啟動後在 `INSIGHTS_DIR` 建立 `token_usage_insights.db` | `db.rs` 的 `DB_FILE_NAME` 與 `get_db_conn` |
 | SQLite 的 5 張表、8 個索引 | `db::init_db` 中的 `CREATE TABLE` / `CREATE INDEX` 完全對應 |
 | 瀏覽器實際呼叫的 6 個 API 與回應內容 | 與 `main.rs` 路由、`handlers` 的回傳結構一致；成本與手算吻合 |
@@ -482,7 +671,8 @@ GET http://localhost:3003/api/copilot/usage/2026-10-15
 - **Cookie**：`app.js` 用 `document.cookie` 存 `selected_agent`、`active_tab`、`live_refresh`，REA 的 storage 節點裡完全沒有 cookie。
 - **用常數當鍵的 `localStorage`**：側邊欄狀態用 `SIDEBAR_STATE_STORAGE_KEY` 常數當鍵（第 373、378 行），REA 只記錄成「有一個 `localStorage.getItem` / `setItem` 呼叫」，鍵名是 `null`。
 - **CSS**：`static/css/*.css` 不在 JavaScript 分析範圍內（但瀏覽器擷取有看到它們被載入，`styles.css` 透過 `@import` 載入其他 4 個檔案）。
-- **後端業務邏輯**：不靠 Ghidra 的原生指令只能看到檔案格式、連結庫、符號名稱；看不到 `calculate_cost` 裡的 272k 門檻、模糊比對這類細節。
+- **後端業務邏輯（不用 Ghidra 時）**：`inspect-artifact`、`inspect-rust-binary`、`inspect-binary-layout` 只能看到檔案格式、連結庫、符號名稱，看不到 `calculate_cost` 裡的 272k 門檻、模糊比對這類細節。要靠 Ghidra 反編譯才看得到（6.7 節）。
+- **Rust 字串常數**：Ghidra 搜尋 `/api/`、`pricing.csv`、`272k` 全部是空的，但用 `grep -a` / `strings` 檢查執行檔，這些文字都在。例如所有路由是緊密相連、沒有分隔字元的一長串：`/api/:assistant/dates/api/:assistant/setup-info/api/:assistant/usage/:date...`。Rust 的字串不以 `\0` 結尾，Ghidra 無法判斷每個字串在哪裡結束，所以不會把它們定義成「字串資料」。REA 的 limitations 也有提醒：`an empty search does not establish that text is absent from the artifact`。（同樣是 Rust 字串，`CREATE TABLE` 那幾段 SQL 卻搜得到，代表 Ghidra 的字串辨識是逐段判斷的，結果不一定一致；本次沒有進一步追查原因。）`272k` 在 Rust 原始碼中是 `">272k"` 等比對用的字串，數字 272000 則以 `0x42680` 常數出現在機器碼裡。
 - **被 inline 的函式**：原始碼中有不少函式在 release 執行檔中**沒有獨立符號**，因為編譯器把它們內聯（inline）進呼叫端了，例如 `sync_codex_usage_logs`、`parse_codex_session_file`、`parse_claude_session_file`、`parse_cursor_session_file`、`get_insights_dir`、`normalize_model_name` 等。只看符號表會以為「沒有 Codex 同步功能」，其實它被併進 `sync_usage_logs` 了。
 
 ### 7.3 REA 看錯或容易誤會的
@@ -491,6 +681,8 @@ GET http://localhost:3003/api/copilot/usage/2026-10-15
 - **把 URL 查詢參數當成網路端點**：`urlParams.get('tab')`、`get('agent')`、`get('date')` 被列為 `endpoint` 候選。REA 自己標示為 `state: inferred`、`confidence: low`，實際上它們只是網址列上的參數，不是 API。
 - **`/static/app.js?v=29` 顯示 `not-found`**：檔案明明存在。原因是 HTML 裡寫的是伺服器路徑 `/static/app.js`，而 REA 分析的根目錄就是 `static/`，它不知道伺服器把 `static/` 掛在 `/static` 底下（`main.rs` 的 `nest_service("/static", ...)`）。
 - **`modules: 0`**：摘要說沒有模組，但圖裡其實有 `app.js`、`i18n.js` 兩個 ESM 模組節點與一條 import 邊。這個 `modules` 計數指的是打包工具（Webpack / Rspack）的模組工廠，不是一般 ESM 檔案，容易誤讀。
+- **Ghidra 把 `main` 的呼叫歸錯函式**：`procedure_callers(sync_usage_logs)` 列出一個 axum handler closure，但 `objdump` 顯示該 `call` 指令其實位在 `main::{{closure}}` 裡；而且 `trigger_manual_sync` 透過 `spawn_blocking` 呼叫，所以實際出現在 `BlockingTask::poll` 中。直接相信 Ghidra 的「呼叫者」清單，會誤以為「某個帶兩個參數的 API（例如匯入）會觸發同步」，這是錯的。
+- **`inspect-with-objdump` 輸出被截斷**：完整反組譯超過 REA 的輸出上限，結果標示 `output_truncated: true`、`completion_status: unknown`，`yearly` 那兩個呼叫點就不在保留的範圍內。如果只看 REA 保留的部分，會以為 `calculate_cost` 只有 3 個呼叫點。
 - **`capture-process` 的結束碼**：REA 記錄為 `code: 0, signal: 2`。伺服器其實是被 SIGINT 結束的；這比較像是 PTY 層回報的方式，看結果時要以 `signal` 為準。
 
 ---
@@ -501,7 +693,8 @@ GET http://localhost:3003/api/copilot/usage/2026-10-15
 - **靜態分析不等於執行**：REA 的 JavaScript 分析只解析語法樹，不執行程式；所有「關係」都是候選。報告中的每個結論都另外對照過原始碼或執行期擷取。
 - **Evidence 檔案非常大**：前端完整 Evidence 25 MB、`inspect-binary-layout` 9.3 MB、瀏覽器擷取約 1 MB。`raw/` 只放精簡版或小檔案；精簡版裡都有 `note` 欄位說明刪掉了什麼。
 - **需要額外安裝的東西**：Ghidra（約 500 MB 壓縮檔 + JDK 21）、pwntools 環境（`inspect-binary-layout`）、Chrome（瀏覽器擷取）。REA 本身不會幫你安裝。
-- **Ghidra 很慢**：分析一個 6 MB 的 Rust 執行檔，第一次用預設啟動期限（330 秒）就逾時了，詳見 6.7 節。
+- **Ghidra 很慢**：分析一個 6 MB 的 Rust 執行檔每次約 12 分鐘（4 核心 VM）。第一次用預設啟動期限（330 秒）就逾時了；CLI 每次呼叫都會重新分析，所以要問多個問題時改用 MCP 模式比較實際。本次總共跑了 4 次 Ghidra（1 次逾時、1 次 CLI 成功、2 次 MCP session）。
+- **反編譯不是原始碼**：Ghidra 的虛擬碼沒有變數名稱（`param_7`、`local_90`），型別也多半是 `undefined8`。要靠符號名稱、常數（如 `0x42680`）與資料結構偏移量（`+0x18`、`+0x30`）去推理。這個專案的 release 執行檔保留了符號表，是很大的幫助；若 `strip` 過，難度會大很多。
 - **只用了 Copilot 假資料**：Codex、Claude Code、Cursor 的 transcript 解析邏輯很複雜（`db.rs` 大部分篇幅），本報告只從原始碼說明，沒有用假資料逐一實測。
 - **Windows / macOS**：本次只在 Linux 上執行。`capture-process` 不支援原生 Windows。
 - **雲端 VM 路徑**：raw 檔案中出現的 `/workspace`、`/tmp/fixture`、`/home/ubuntu` 都是這台暫時 VM 的路徑，不是任何人的個人路徑。
@@ -552,6 +745,9 @@ REA_PWNTOOLS_PYTHON=/path/to/venv/bin/python \
 export GHIDRA_INSTALL_DIR=/path/to/ghidra_12.1.4_PUBLIC
 export REA_GHIDRA_STARTUP_TIMEOUT_MS=1800000
 rea analyze "$PWD/target/release/joker-token-usage-insights" --provider ghidra --json
+# 多個查詢共用一次導入：MCP 模式（腳本中的路徑請依自己的環境修改）
+node docs/rea-analysis/scripts/mcp-ghidra2.mjs
+rea inspect-with-objdump "$PWD/target/release/joker-token-usage-insights" disassemble --json
 
 # 6. 執行期觀察：一定要用環境變數把資料目錄指到假資料，避免讀到真實紀錄
 rea capture-process ./process-scenario.json --json
@@ -572,4 +768,12 @@ rea capture-browser-scenario ./browser-scenario.json --json
 | `process-capture.json` | `capture-process` | 原始輸出 |
 | `sqlite-*.json` | `inspect-sqlite-database` | 原始輸出 |
 | `browser-capture-extract.json` | `capture-browser-scenario` | 精簡（省略靜態檔案的回應內容） |
-| `ghidra-*.json` | Ghidra 相關 | 見 6.7 節 |
+| `ghidra-analyze-attempt1-timeout.json` | `analyze --provider ghidra`（第一次，逾時） | 精簡（省略 4.9 MB 的 Ghidra log） |
+| `ghidra-analyze.json` | `analyze --provider ghidra`（第二次，成功） | 原始輸出 |
+| `ghidra-mcp-session1.json` | MCP：`binary_overview`、`search_procedures`、`search_strings` | 每次呼叫保留 `normalized_result` 與 `limitations` |
+| `ghidra-mcp-session2.json` | MCP：`procedure_pseudo_code`、`procedure_callers`、`procedure_callees` | 同上 |
+| `ghidra-calculate-cost-pseudocode.c` | `procedure_pseudo_code("0x20ac30")` | 原始輸出（純文字） |
+| `ghidra-xrefs-resolved-names.json` | Ghidra 位址 + `inspect-binary-layout` 符號表 | 我自己換算出的函式名稱 |
+| `objdump-disassemble-extract.json` | `inspect-with-objdump disassemble` | 精簡（35 MB 中只保留相關 `call` 指令） |
+
+`scripts/` 目錄放的是本次實際使用的 process / browser scenario 與 MCP 客戶端腳本。`mcp-ghidra.mjs` 保留了第 6.7 節提到的位址擷取錯誤，`mcp-ghidra2.mjs` 是修正後直接用位址查詢的版本。
