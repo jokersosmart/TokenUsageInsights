@@ -413,7 +413,7 @@ function toggleSidebar() {
 }
 
 function updateLanguageUI() {
-  document.title = 'Token 戰情室';
+  document.title = 'Joker Token 戰情室';
 
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const key = el.getAttribute('data-i18n');
